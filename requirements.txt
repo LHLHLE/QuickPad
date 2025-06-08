@@ -1,3 +1,5 @@
-flask
-markupsafe
+Flask
+gunicorn
 openpyxl
+werkzeug
+markupsafe
