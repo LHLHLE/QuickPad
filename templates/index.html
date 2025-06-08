@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickPad</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <style>
+        :root {
+            --bg-color: #121212; --surface-color: #1e1e1e; --input-bg-color: #2c2c2c;
+            --primary-text-color: #e0e0e0; --accent-color: #03a9f4; --border-color: #333333;
+            --error-color: #ff5252; --placeholder-color: #888888;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body { background-color: var(--bg-color); color: var(--primary-text-color); font-family: 'Inter', sans-serif; line-height: 1.6; display: flex; flex-direction: column; }
+        .header { position: fixed; top: 0; left: 0; width: 100%; background-color: rgba(18,18,18,0.8); backdrop-filter: blur(10px); z-index: 100; display: flex; align-items: center; padding: 0px 20px; height: 55px; border-bottom: 1px solid var(--border-color); justify-content: space-between; }
+        .logo { font-size: 1.2rem; font-weight: 500; color: var(--primary-text-color); margin-left: 5px; }
+        .menu-icon, .menu-item, .menu-link { cursor: pointer; user-select: none; }
+        .menu { display: none; position: fixed; top: 50px; right: 20px; background-color: var(--surface-color); border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); z-index: 101; padding: 8px 0; min-width: 200px; }
+        .menu.show { display: block; }
+        .menu-header { display: flex; align-items: center; padding: 0px 15px 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 5px; }
+        .pfp-outline { width: 32px; height: 32px; border: 2px solid var(--accent-color); border-radius: 50%; margin-right: 12px; background-color: var(--input-bg-color); }
+        .menu-item, .menu-link { display: flex; align-items: center; padding: 10px 20px; color: var(--primary-text-color); text-decoration: none; }
+        .menu-item:hover, .menu-link:hover { background-color: var(--input-bg-color); }
+        .menu-item.danger { color: var(--error-color); }
+        #export-options { display: none; position: fixed; background-color: var(--surface-color); border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); z-index: 102; padding: 8px 0; min-width: 130px; }
+        .export-icon { width: 18px; height: 18px; margin-right: 10px; color: var(--accent-color); }
+        #context-menu { display: none; position: fixed; z-index: 300; background-color: var(--surface-color); border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); padding: 8px 0; min-width: 180px; }
+        .context-menu-item { display: flex; align-items: center; padding: 10px 15px; color: var(--primary-text-color); cursor: pointer; }
+        .context-menu-item:hover { background-color: var(--input-bg-color); }
+        .context-menu-divider { height: 1px; background-color: var(--border-color); margin: 5px 0; }
+        #toast-notification { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: var(--accent-color); color: white; padding: 10px 20px; border-radius: 20px; z-index: 500; font-size: 0.9em; box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+        #notes-container { flex-grow: 1; overflow-y: auto; padding: 20px; max-width: 900px; width: 100%; margin: 55px auto 0; scrollbar-width: none; }
+        .note-item { background-color: var(--surface-color); padding: 15px; margin-bottom: 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); word-wrap: break-word; }
+        @keyframes slideInFromRight { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .note-item.new-note-animation { animation: slideInFromRight 0.4s ease-out forwards; }
+        .note-text { white-space: pre-wrap; word-wrap: break-word; }
+        .note-item.editing { outline: 2px solid var(--accent-color); }
+	.note-text.editing-text { background-color: var(--input-bg-color); border-radius: 4px; padding: 5px; margin: -5px; }
+        .edit-controls { display: none; margin-top: 15px; }
+        .note-item.editing .edit-controls { display: flex; justify-content: flex-end; gap: 10px; }
+        .edit-btn { background-color: #555; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 1em; }
+        .edit-btn.save { background-color: var(--accent-color); }
+        .note-text + .note-attachment { margin-top: 10px; }
+        .note-attachment { display: flex; align-items: center; gap: 12px; padding: 10px; background-color: var(--input-bg-color); border-radius: 8px; margin-top: 0; cursor: pointer; border: 1px solid var(--border-color); text-decoration: none; min-height: 64px; }
+        .note-attachment:hover { background-color: #3c3c3c; }
+        .attachment-icon { flex-shrink: 0; width: 36px; height: 36px; color: var(--accent-color); }
+        .attachment-details { overflow: hidden; }
+        .attachment-filename { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary-text-color); }
+        .attachment-filesize { font-size: 0.8em; color: var(--placeholder-color); }
+        .input-area { flex-shrink: 0; width: 100%; background-color: var(--bg-color); padding: 10px 15px 15px 15px; border-top: 1px solid var(--border-color); }
+        #note-form { display: flex; align-items: flex-end; gap: 10px; max-width: 900px; width: 100%; margin: 0 auto; }
+        #attach-btn, #send-btn { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.2s; }
+        #attach-btn { background-color: var(--input-bg-color); color: var(--primary-text-color); }
+        #attach-btn svg { width: 22px; height: 22px; }
+        #note-input { width: 100%; min-height: 48px; max-height: 200px; padding: 14px 20px; border: 1px solid var(--border-color); border-radius: 24px; background-color: var(--input-bg-color); color: #ffffff; font-size: 1rem; font-family: 'Inter', sans-serif; resize: none; scrollbar-width: none; /* FIXED: Scrollbar for firefox */ }
+        #note-input::-webkit-scrollbar { display: none; /* FIXED: Scrollbar for chrome/safari */ }
+        #send-btn { background-color: var(--accent-color); color: white; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
+        #send-btn svg { width: 24px; height: 24px; padding: 1px 2px 0px 0px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 200; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background-color: var(--surface-color); padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; }
+        .modal-content h3 { margin-bottom: 10px; text-align: center; font-weight: 500; }
+        .modal-content > p { margin-bottom: 20px; color: #aaa; text-align: center; }
+        .modal-content .modal-divider { border-color: var(--border-color); margin: 15px 0; }
+        .modal-content input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: #fff; margin-bottom: 20px; }
+        .modal-actions { text-align: center; }
+        .modal-actions button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 500; font-size: 1rem; cursor: pointer;}
+        .modal-actions .btn-cancel { background-color: #555; color: #fff; }
+        .modal-actions .btn-confirm { background-color: var(--error-color); color: #fff; margin-left: 10px;}
+        #prop-filename-val { font-size: 1.1em; font-weight: 500; text-align: left; word-break: break-all; margin-bottom: 5px;}
+        #prop-text { white-space: pre-wrap; word-wrap: break-word; text-align: left; margin: 0; }
+        #prop-details div { display: flex; justify-content: space-between; margin-bottom: 5px; color: #aaa;}
+        #prop-details div strong { color: #ccc; }
+	#confirm-password::placeholder { font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="header"><div class="logo">QuickPad</div><div class="menu-icon" id="menu-icon">☰</div></div>
+    <div id="toast-notification"></div>
+    <div id="notes-container">
+        {% for note in notes %}
+            <div class="note-item" data-timestamp="{{ note.timestamp }}">
+                {% if note.text %}<div class="note-text">{{ note.text }}</div>{% endif %}
+                {% if note.attachment %}
+                <a class="note-attachment {% if note.text %}note-text + .note-attachment{% endif %}" href="/files/{{ username }}/{{ note.attachment.stored_name }}" download="{{ note.attachment.original_name }}">
+                    {{ note.attachment.original_name | file_icon }}
+                    <div class="attachment-details">
+                        <div class="attachment-filename">{{ note.attachment.original_name }}</div>
+                        <div class="attachment-filesize">{{ note.attachment.size | format_bytes }}</div>
+                    </div>
+                </a>
+                {% endif %}
+                <div class="edit-controls"><button class="edit-btn cancel">Cancel</button><button class="edit-btn save">Save</button></div>
+            </div>
+        {% endfor %}
+    </div>
+    <div class="input-area"><form id="note-form"><input type="file" id="file-input" hidden><button type="button" id="attach-btn" title="Attach File"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49"></path></svg></button><textarea id="note-input" rows="1"></textarea><button type="submit" id="send-btn" title="Send (Ctrl+Enter)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div>
+    
+    <div id="context-menu"></div>
+    <div class="modal-overlay" id="properties-modal">
+        <div class="modal-content">
+            <div id="prop-filename-val"></div><p id="prop-text"></p><hr class="modal-divider">
+            <div id="prop-details">
+                <div><strong>Date</strong> <span id="prop-date-val"></span></div>
+                <div><strong>Time</strong> <span id="prop-time-val"></span></div>
+                <div id="prop-size-container"><strong>Size</strong> <span id="prop-size-val"></span></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="clear-modal">
+        <div class="modal-content">
+            <h3>Are you sure ?</h3><p>This action cannot be undone. Please enter your password to confirm.</p>
+            <input style="font-family: 'Inter', sans-serif" type="password" id="confirm-password" placeholder="Password"><div class="modal-actions"><button style="font-family: 'Inter', sans-serif" class="btn-cancel" id="cancel-clear">Cancel</button><button style="font-family: 'Inter', sans-serif" class="btn-confirm" id="confirm-clear">Delete All Notes</button></div>
+        </div>
+    </div>
+    <div class="menu" id="menu">
+        <div class="menu-header"><div class="pfp-outline"></div><span>{{ username }}</span></div>
+        <div class="menu-item" id="export-menu-item">Export As</div>
+        <div class="menu-item danger" id="clear-notes-btn">Clear All Notes</div>
+        <a href="/logout" class="menu-link">Log Out</a>
+    </div>
+    <div id="export-options">
+        <a href="/export/txt" class="menu-link export-link"><svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>TXT</a>
+        <a href="/export/csv" class="menu-link export-link"><svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M12 18h-1v-6h1v2h1v2h-1z"></path><path d="M8 18h1v-4h-1v-2h1v-1h1v1h1v1h-1v1H8z"></path><path d="M17 18h-1v-4h1v-2h-1v-1h-1v1h-1v1h1v1h1z"></path></svg>CSV</a>
+        <a href="/export/xlsx" class="menu-link export-link"><svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M12 18l-2-4 2-4m3 8l2-4-2-4"></path></svg>XLSX</a>
+    </div>
+
+<script>
+// --- FINAL SCRIPT ---
+document.addEventListener('DOMContentLoaded', function() {
+    const username = "{{ username }}";
+    const notesContainer = document.getElementById('notes-container');
+    const noteForm = document.getElementById('note-form');
+    const noteInput = document.getElementById('note-input');
+    const fileInput = document.getElementById('file-input');
+    const contextMenu = document.getElementById('context-menu');
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+    let toastTimer = null;
+    let originalNoteText = '';
+    let activeNoteElement = null;
+
+    noteInput.placeholder = isMobile ? 'Type note...' : 'Type a note... (Ctrl+Enter to send)';
+    document.querySelectorAll('.note-item .note-text').forEach(el => el.innerHTML = autolink(el.textContent));
+
+    // --- Utility Functions ---
+    function showToast(message, type = 'success') { const t=document.getElementById('toast-notification');clearTimeout(toastTimer);t.textContent=message;t.style.backgroundColor=type==='error'?'var(--error-color)':'var(--accent-color)';t.style.display='block';toastTimer=setTimeout(()=>{t.style.display='none';},3000);}
+    function formatBytes(bytes,d=2){if(!+bytes)return'0 Bytes';const k=1024,i=Math.floor(Math.log(bytes)/k);return`${parseFloat((bytes/Math.pow(k,i)).toFixed(d<0?0:d))} ${['Bytes','KB','MB','GB','TB'][i]}`}
+    function autolink(text){return text?text.replace(/(https?:\/\/[^\s]+|www\.[^\s]+)/g,url=>`<a href="${url.startsWith('www.')?'https://'+url:url}" target="_blank" rel="noopener noreferrer">${url}</a>`):'';}
+    function getIconForFile(filename){const i={'_default':`<svg class="attachment-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,'image':`<svg class="attachment-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`};const e=filename.split('.').pop().toLowerCase();if(['jpg','jpeg','png','gif','svg','webp'].includes(e))return i.image;return i._default;}
+    noteInput.addEventListener('input', () => { noteInput.style.height = 'auto'; noteInput.style.height = `${noteInput.scrollHeight}px`; });
+
+    // --- Core Application Logic ---
+    function createNoteElement(note){const n=document.createElement('div');n.className='note-item';n.dataset.timestamp=note.timestamp;if(note.text){const t=document.createElement('div');t.className='note-text';t.innerHTML=autolink(note.text);n.appendChild(t);}if(note.attachment){const a=document.createElement('a');a.className='note-attachment';if(note.text)a.classList.add('note-text + .note-attachment');a.href=`/files/${username}/${note.attachment.stored_name}`;a.download=note.attachment.original_name;a.innerHTML=`${getIconForFile(note.attachment.original_name)}<div class="attachment-details"><div class="attachment-filename">${note.attachment.original_name}</div><div class="attachment-filesize">${formatBytes(note.attachment.size)}</div></div>`;n.appendChild(a);}const c=document.createElement('div');c.className='edit-controls';c.innerHTML=`<button class="edit-btn cancel">Cancel</button><button class="edit-btn save">Save</button>`;n.appendChild(c);return n;}
+async function fetchAndUpdateNotes() {
+        try {
+            const response = await fetch('/get_notes');
+            if (!response.ok) return;
+
+            const serverNotes = await response.json();
+            const existingTimestamps = new Set(
+                Array.from(notesContainer.querySelectorAll('.note-item')).map(el => el.dataset.timestamp)
+            );
+
+            serverNotes.forEach(note => {
+                if (!existingTimestamps.has(note.timestamp)) {
+                    // This uses your working renderNewNote function to add and animate
+                    renderNewNote(note); 
+                }
+            });
+        } catch (error) {
+            console.error("Polling for new notes failed:", error);
+        }
+    }
+        async function fetchAndUpdateNotes() {
+        try {
+            const response = await fetch('/get_notes');
+            if (!response.ok) return;
+
+            const serverNotes = await response.json();
+            const existingTimestamps = new Set(
+                Array.from(notesContainer.querySelectorAll('.note-item')).map(el => el.dataset.timestamp)
+            );
+
+            // Loop through all notes from the server
+            serverNotes.forEach(note => {
+                // If a note from the server is NOT on our screen...
+                if (!existingTimestamps.has(note.timestamp)) {
+                    // ...render it and tell the function to scroll
+                    renderNewNote(note, true);
+                }
+            });
+
+        } catch (error) {
+            console.error("Polling for new notes failed:", error);
+        }
+    }        function renderNewNote(note, shouldScroll = false) {
+        // Prevent adding a note that's already on the screen
+        if (document.querySelector(`.note-item[data-timestamp="${note.timestamp}"]`)) return false;
+
+        const noteEl = createNoteElement(note);
+        notesContainer.appendChild(noteEl);
+        
+        // This adds the "slide in from right" animation
+        noteEl.classList.add('new-note-animation'); 
+
+        // Scroll to the bottom if this function was called to show a *new* remote message
+        if (shouldScroll) {
+            notesContainer.scrollTop = notesContainer.scrollHeight;
+        }
+        
+        return true; // Indicate that a new note was actually added
+    }    async function submitNote(payload) {
+        try {
+            const res = await fetch('/add_note', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const result = await res.json();
+            if (res.ok && result.status === 'success') {
+                // When we submit a note, render it AND tell the function to scroll
+                renderNewNote(result.note, true); 
+                return true;
+            } else {
+                throw new Error(result.message || 'Server error');
+            }
+        } catch (error) {
+            showToast(error.message, 'error');
+            return false;
+        }
+    }
+
+    // --- Event Listeners ---
+    noteForm.addEventListener('submit',async(e)=>{e.preventDefault();const t=noteInput.value.trim();if(!t)return;const s=await submitNote({note:t,attachment:null});if(s){noteInput.value='';noteInput.style.height='auto';noteInput.focus();}});
+    noteInput.addEventListener('keydown',(e)=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();noteForm.requestSubmit();}});
+    document.getElementById('attach-btn').addEventListener('click',()=>fileInput.click());
+        fileInput.addEventListener('change', async(e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        showToast('Uploading...');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            // Step 1: Upload the file to get its details
+            const uploadRes = await fetch('/upload_file', { method: 'POST', body: formData });
+            const uploadResult = await uploadRes.json();
+            if (!uploadRes.ok || uploadResult.status !== 'success') {
+                throw new Error(uploadResult.message || 'Upload failed');
+            }
+            
+            // Step 2: Create the note record on the server
+            const noteRes = await fetch('/add_note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: '', attachment: uploadResult })
+            });
+
+            if (!noteRes.ok) {
+                 throw new Error('Failed to save the note after upload.');
+            }
+            
+            // Step 3: Refresh the page to show the new note perfectly.
+            window.location.reload();
+
+        } catch (error) {
+            showToast(error.message, 'error');
+            e.target.value = null; // Reset input on failure
+        }
+    });
+    
+    // RESTORED STABLE EVENT LISTENERS
+    notesContainer.addEventListener('contextmenu', (e)=>{
+        activeNoteElement = e.target.closest('.note-item'); if(!activeNoteElement||activeNoteElement.classList.contains('editing'))return;
+        e.preventDefault();let menuHTML='';
+        if(e.target.closest('.note-attachment')){menuHTML=`<div class="context-menu-item" data-action="download">Download</div><div class="context-menu-divider"></div><div class="context-menu-item" data-action="delete" style="color:var(--error-color)">Delete</div><div class="context-menu-divider"></div><div class="context-menu-item" data-action="properties">Properties</div>`;
+        }else if(activeNoteElement.querySelector('.note-text')){menuHTML=`<div class="context-menu-item" data-action="copy">Copy</div><div class="context-menu-item" data-action="edit">Edit</div><div class="context-menu-divider"></div><div class="context-menu-item" data-action="delete" style="color:var(--error-color)">Delete</div><div class="context-menu-divider"></div><div class="context-menu-item" data-action="properties">Properties</div>`;}
+        if(menuHTML){contextMenu.innerHTML=menuHTML;contextMenu.style.display='block';let t=e.clientY,l=e.clientX;if(t+contextMenu.offsetHeight>window.innerHeight)t-=contextMenu.offsetHeight;if(l+contextMenu.offsetWidth>window.innerWidth)l-=contextMenu.offsetWidth;contextMenu.style.top=`${t}px`;contextMenu.style.left=`${l}px`;}
+    });
+
+    contextMenu.addEventListener('click',async(e)=>{
+        const t=e.target.closest('.context-menu-item');if(!t||!activeNoteElement)return;
+        const a=t.dataset.action;contextMenu.style.display='none';
+        const ts=activeNoteElement.dataset.timestamp;
+        switch(a){
+            case'copy':navigator.clipboard.writeText(activeNoteElement.querySelector('.note-text').innerText);showToast('Copied to clipboard');break;
+            case 'edit':
+    const textEl=activeNoteElement.querySelector('.note-text');
+    originalNoteText=textEl.innerText;
+    textEl.innerHTML=originalNoteText;
+    activeNoteElement.classList.add('editing');
+    textEl.classList.add('editing-text'); // <-- ADD THIS LINE
+    textEl.contentEditable=true;
+    textEl.focus();
+    break;
+            case'download':activeNoteElement.querySelector('.note-attachment').click();break;
+            case'delete':if(confirm('Are you sure ?')){const r=await fetch('/delete_note',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({timestamp:ts})});if(r.ok)activeNoteElement.remove();else showToast('Delete failed.','error');}break;
+            case'properties':
+                const m={o:document.getElementById('properties-modal'),f:document.getElementById('prop-filename-val'),t:document.getElementById('prop-text'),sc:document.getElementById('prop-size-container'),d:document.getElementById('prop-date-val'),ti:document.getElementById('prop-time-val'),s:document.getElementById('prop-size-val')};
+                const dt=new Date(ts);const isAtt=!!activeNoteElement.querySelector('.note-attachment');
+                m.f.style.display=isAtt?'block':'none';m.t.style.display=isAtt?'none':'block';m.sc.style.display=isAtt?'flex':'none';
+                if(isAtt){m.f.textContent=activeNoteElement.querySelector('.attachment-filename').textContent;m.s.textContent=activeNoteElement.querySelector('.attachment-filesize').textContent;}
+                else{m.t.textContent=activeNoteElement.querySelector('.note-text').innerText;}
+                m.d.textContent=dt.toLocaleDateString();m.ti.textContent=dt.toLocaleTimeString();m.o.classList.add('show');
+                break;
+        }
+    });
+
+    notesContainer.addEventListener('click',(e)=>{
+    if(!e.target.matches('.edit-btn'))return;
+    const n=e.target.closest('.note-item.editing');if(!n)return;
+    const t=n.querySelector('.note-text');
+    t.classList.remove('editing-text'); // <-- ADD THIS LINE
+    t.contentEditable=false;
+    n.classList.remove('editing');
+    if(e.target.classList.contains('save')){
+        const newT=t.textContent.trim();
+        fetch('/edit_note',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({timestamp:n.dataset.timestamp,new_text:newT})})
+            .then(()=>t.innerHTML=autolink(newT));
+    }
+    else{
+        t.innerHTML=autolink(originalNoteText);
+    }
+});
+
+    const menu=document.getElementById('menu'),menuIcon=document.getElementById('menu-icon');
+    const exportMenuItem=document.getElementById('export-menu-item'),exportOptions=document.getElementById('export-options');
+    let exportHoverTimeout;
+    menuIcon.addEventListener('click',(e)=>{e.stopPropagation();menu.classList.toggle('show');if(!menu.classList.contains('show'))exportOptions.style.display='none';});
+    function showExportMenu(){const r=exportMenuItem.getBoundingClientRect();exportOptions.style.display='block';exportOptions.style.top=`${r.top}px`;exportOptions.style.left=`${r.left-exportOptions.offsetWidth-5}px`;}
+    if(isMobile){exportMenuItem.addEventListener('click',(e)=>{e.stopPropagation();showExportMenu();});}
+    else{exportMenuItem.addEventListener('mouseenter',()=>{clearTimeout(exportHoverTimeout);showExportMenu();});exportMenuItem.addEventListener('mouseleave',()=>{exportHoverTimeout=setTimeout(()=>{exportOptions.style.display='none'},200);});exportOptions.addEventListener('mouseenter',()=>{clearTimeout(exportHoverTimeout);});exportOptions.addEventListener('mouseleave',()=>{exportOptions.style.display='none'});}
+    
+    document.getElementById('clear-notes-btn').addEventListener('click',(e)=>{e.stopPropagation();menu.classList.remove('show');document.getElementById('clear-modal').classList.add('show');});
+    document.getElementById('cancel-clear').addEventListener('click',()=>{document.getElementById('clear-modal').classList.remove('show');});
+    document.getElementById('confirm-clear').addEventListener('click',async()=>{const p=document.getElementById('confirm-password').value;if(!p){alert('Password is required.');return;}const r=await fetch('/clear_notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});if(r.ok){notesContainer.innerHTML='';document.getElementById('clear-modal').classList.remove('show');document.getElementById('confirm-password').value='';}else{alert('Invalid password.');}});
+    
+        document.addEventListener('click', (e) => {
+        // Close context menu if the click is outside of it
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.style.display = 'none';
+        }
+
+        // Close ALL modals if the click is directly on the dark overlay background
+        if (e.target.classList.contains('modal-overlay')) {
+            Array.from(document.getElementsByClassName('modal-overlay')).forEach(m => m.classList.remove('show'));
+        }
+
+        // Close main menu if click is outside of the menu or its icon
+        const menu = document.getElementById('menu');
+        const menuIcon = document.getElementById('menu-icon');
+        if (!menu.contains(e.target) && !menuIcon.contains(e.target)) {
+            menu.classList.remove('show');
+            document.getElementById('export-options').style.display = 'none';
+        }
+    });
+
+    // PASTE THIS LINE HERE
+    setInterval(fetchAndUpdateNotes, 1000); // Check for new notes every 3 seconds
+
+}); // <-- This is the final closing bracket
+</script>
+</body>
+</html>
