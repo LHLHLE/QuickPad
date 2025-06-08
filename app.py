@@ -369,5 +369,5 @@ def export(filetype):
 # as it uses a different method to run the app. You can either remove it entirely
 # or leave it as-is for local testing. It will not be executed on the server.
 
-if __name__ == '__main__':
-  app.run(host="0.0.0.0", port=3000, debug=True)
+# if __name__ == '__main__':
+#   app.run(host="0.0.0.0", port=3000, debug=True)
