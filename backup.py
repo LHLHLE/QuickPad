@@ -26,9 +26,16 @@ class TlsAdapter(HTTPAdapter):
         )
 
 # --- Configuration ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# The directory where THIS script is running (ephemeral filesystem on Render)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# The directory where user data is stored (the persistent disk on Render)
+# This will be '/data' on Render, or the local directory '.' for testing.
+DATA_DIR = os.environ.get('RENDER_DATA_DIR', '.')
+
 DRIME_API_URL = "https://app.drime.cloud/api/v1"
-DRIME_API_KEY = "3449|CvNDnkwSz1nVbpfx1WLqAmTVg7N0haSwZb6R8xjgdbfed638"
+# It is strongly recommended to set this as an Environment Variable on Render
+DRIME_API_KEY = os.environ.get('DRIME_API_KEY', "3449|CvNDnkwSz1nVbpfx1WLqAmTVg7N0haSwZb6R8xjgdbfed638")
 
 SOURCES_TO_BACKUP: List[str] = [
     'users.txt',
@@ -59,7 +66,7 @@ def create_backup_archive() -> Optional[str]:
 
     try:
         for src_name in SOURCES_TO_BACKUP:
-            source_path = os.path.join(BASE_DIR, src_name)
+            source_path = os.path.join(DATA_DIR, src_name)
             if os.path.exists(source_path):
                 dest_path = os.path.join(temp_archive_dir, src_name)
                 if os.path.isdir(source_path):
