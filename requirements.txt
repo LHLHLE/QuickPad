@@ -3,3 +3,4 @@ gunicorn
 openpyxl
 werkzeug
 markupsafe
+boto3
