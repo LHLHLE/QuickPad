@@ -18,12 +18,15 @@ from openpyxl import Workbook
 app = Flask(__name__)
 
 # --- Configuration ---
-# Use app.config for centralized, clear configuration
-app.config['SECRET_KEY'] = 'a-very-secret-and-random-key-for-sessions'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload size
-app.config['USERS_FILE'] = "users.txt"
-app.config['NOTES_DIR'] = "user_notes"
-app.config['UPLOADS_DIR'] = "user_uploads"
+# Use a persistent disk mount path for all user data
+# This is CRITICAL for production hosting
+DATA_DIR = os.environ.get('RENDER_DATA_DIR', '.') # Use /data on Render, local dir otherwise
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a-very-secret-key-for-dev')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+app.config['USERS_FILE'] = os.path.join(DATA_DIR, "users.txt")
+app.config['NOTES_DIR'] = os.path.join(DATA_DIR, "user_notes")
+app.config['UPLOADS_DIR'] = os.path.join(DATA_DIR, "user_uploads")
 
 # --- Directory Initialization ---
 # Ensure necessary directories exist on startup
